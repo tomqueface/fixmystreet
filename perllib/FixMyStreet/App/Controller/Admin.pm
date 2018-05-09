@@ -1492,6 +1492,7 @@ sub user_edit : Path('user_edit') : Args(1) {
 
     $c->forward('fetch_all_bodies');
     $c->forward('fetch_body_areas', [ $user->from_body ]) if $user->from_body;
+    $c->cobrand->call_hook('admin_user_edit_extra_data');
 
     if ( defined $c->flash->{status_message} ) {
         $c->stash->{status_message} =
