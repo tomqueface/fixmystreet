@@ -2148,11 +2148,8 @@ sub fetch_all_bodies : Private {
     my ($self, $c ) = @_;
 
     my @bodies = $c->model('DB::Body')->translated->all_sorted;
-    if ( my @cobrand_bodies = $c->cobrand->call_hook('admin_fetch_all_bodies') ) {
+    if ( my @cobrand_bodies = $c->cobrand->call_hook(admin_fetch_all_bodies => @bodies) ) {
         @bodies = @cobrand_bodies;
-    }
-    if ( $c->cobrand->moniker eq 'zurich' ) {
-        @bodies = $c->cobrand->admin_fetch_all_bodies( @bodies );
     }
     $c->stash->{bodies} = \@bodies;
 
