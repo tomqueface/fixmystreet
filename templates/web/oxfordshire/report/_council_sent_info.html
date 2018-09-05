@@ -4,11 +4,7 @@
           [% reference = problem.get_extra_metadata('customer_reference') %]
         <h3>
           [% IF reference %]
-              [% problem.external_body %] ref:&nbsp;[% reference %]
-          [% ELSIF problem.whensent %]
-              Council ref:&nbsp;[% problem.external_id %]
-          [% ELSIF problem.external_id %]
-              [% problem.external_body %] ref:&nbsp;[% problem.external_id %]
+              [% problem.external_body %] Council ref:&nbsp;[% reference %]
           [% END %]
         </h3>
       [% END %]
