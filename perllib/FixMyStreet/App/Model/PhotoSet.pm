@@ -166,25 +166,20 @@ has ids => ( #  Arrayref of $fileid tuples (always, so post upload/raw data proc
                     return ();
                 }
 
-                # we have an image we can use - save it to the upload dir for storage
-                my $fileid = $self->get_fileid($photo_blob);
-                my $file = $self->get_file($fileid, $type);
-                $upload->copy_to( $file );
-                return $file->basename;
-
+                # we have an image we can use - save it to storage
+                return $self->storage_store_photo($photo_blob, $type);
             }
+
+            # It might be a raw file stored in the DB column...
             if (my $type = detect_type($part)) {
                 my $photo_blob = $part;
-                my $fileid = $self->get_fileid($photo_blob);
-                my $file = $self->get_file($fileid, $type);
-                $file->spew_raw($photo_blob);
-                return $file->basename;
+                return $self->storage_store_photo($photo_blob, $type);
+                # TODO: Should this update the DB record with a pointer to the
+                # newly-stored file, instead of leaving it in the DB?
             }
-            my ($fileid, $type) = split /\./, $part;
-            $type ||= 'jpeg';
-            if ($fileid && length($fileid) == 40) {
-                my $file = $self->get_file($fileid, $type);
-                $file->basename;
+
+            if ($self->storage_photo_exists($part)) {
+                $part;
             } else {
                 # A bad hash, probably a bot spamming with bad data.
                 ();
@@ -194,10 +189,27 @@ has ids => ( #  Arrayref of $fileid tuples (always, so post upload/raw data proc
     },
 );
 
+
+=head2 get_fileid
+
+Calculates an identifier for a binary blob of photo data.
+This is just the SHA1 hash of the blob currently.
+
+=cut
+
 sub get_fileid {
     my ($self, $photo_blob) = @_;
     return sha1_hex($photo_blob);
 }
+
+
+=head2 get_file
+
+Returns a Path::Tiny path to a file on disk identified by an ID and type.
+File may or may not exist. This handle is then used to read photo data or
+write to disk.
+
+=cut
 
 sub get_file {
     my ($self, $fileid, $type) = @_;
@@ -205,13 +217,69 @@ sub get_file {
     return path( $cache_dir, "$fileid.$type" );
 }
 
-sub get_raw_image {
-    my ($self, $index) = @_;
-    my $filename = $self->get_id($index);
+
+=head2 storage_store_photo
+
+Stores a blob of binary data representing a photo in the storage backend.
+If the image type is known, it can be passed in to save another detection pass.
+Returns a key which is used in the future to get the contents of the file.
+
+=cut
+
+sub storage_store_photo {
+    my ($self, $photo_blob, $type) = @_;
+
+    $type = detect_type($photo_blob) unless $type;
+    my $fileid = $self->get_fileid($photo_blob);
+    my $file = $self->get_file($fileid, $type);
+    $file->spew_raw($photo_blob);
+
+    return $file->basename;
+}
+
+
+=head2 storage_retrieve_photo
+
+Fetches the file content of a particular photo from storage.
+Returns the binary blob and the filetype, if the photo exists in storage.
+
+=cut
+
+sub storage_retrieve_photo {
+    my ($self, $filename) = @_;
+
     my ($fileid, $type) = split /\./, $filename;
     my $file = $self->get_file($fileid, $type);
     if ($file->exists) {
         my $photo = $file->slurp_raw;
+        return ($photo, $type);
+    }
+}
+
+
+=head2 storage_photo_exists
+
+Checks whether a particular photo exists in storage.
+
+=cut
+
+sub storage_photo_exists {
+    my ($self, $filename) = @_;
+
+    my ($fileid, $type) = split /\./, $filename;
+    $type ||= 'jpeg';
+    if ($fileid && length($fileid) == 40) {
+        my $file = $self->get_file($fileid, $type);
+        return $file->exists;
+    }
+}
+
+
+sub get_raw_image {
+    my ($self, $index) = @_;
+    my $filename = $self->get_id($index);
+    my ($photo, $type) = $self->storage_retrieve_photo($filename);
+    if ($photo) {
         return {
             data => $photo,
             content_type => "image/$type",
