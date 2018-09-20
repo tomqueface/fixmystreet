@@ -3,7 +3,6 @@ package FixMyStreet::App::Model::PhotoSet;
 # TODO this isn't a Cat model, rename to something else
 
 use Moose;
-use Path::Tiny 'path';
 
 my $IM = eval {
     require Image::Magick;
@@ -12,7 +11,6 @@ my $IM = eval {
 };
 
 use Scalar::Util 'openhandle', 'blessed';
-use Digest::SHA qw(sha1_hex);
 use Image::Size;
 use IPC::Cmd qw(can_run);
 use IPC::Open3;
@@ -57,27 +55,21 @@ has data_items => ( # either a) split from db_data or b) provided by photo uploa
         my $self = shift;
         my $data = $self->db_data or return [];
 
-        return [$data] if (detect_type($data));
+        return [$data] if ($self->storage->detect_type($data));
 
         return [ split ',' => $data ];
     },
 );
 
-has upload_dir => (
+has storage => (
     is => 'ro',
     lazy => 1,
     default => sub {
-        path(FixMyStreet->config('UPLOAD_DIR'))->absolute(FixMyStreet->path_to());
-    },
+        my $class = 'FixMyStreet::PhotoStorage::FileSystem'; # TODO: read from general.yml
+        eval "use $class";
+        return $class->new();
+    }
 );
-
-sub detect_type {
-    return 'jpeg' if $_[0] =~ /^\x{ff}\x{d8}/;
-    return 'png' if $_[0] =~ /^\x{89}\x{50}/;
-    return 'tiff' if $_[0] =~ /^II/;
-    return 'gif' if $_[0] =~ /^GIF/;
-    return '';
-}
 
 =head2 C<ids>, C<num_images>, C<get_id>, C<all_ids>
 
@@ -167,19 +159,19 @@ has ids => ( #  Arrayref of $fileid tuples (always, so post upload/raw data proc
                 }
 
                 # we have an image we can use - save it to storage
-                return $self->storage_store_photo($photo_blob);
+                return $self->storage->store_photo($photo_blob);
             }
 
             # It might be a raw file stored in the DB column...
-            if (my $type = detect_type($part)) {
+            if (my $type = $self->storage->detect_type($part)) {
                 my $photo_blob = $part;
-                return $self->storage_store_photo($photo_blob);
+                return $self->storage->store_photo($photo_blob);
                 # TODO: Should this update the DB record with a pointer to the
                 # newly-stored file, instead of leaving it in the DB?
             }
 
-            my $key = $self->storage_tidy_key($part);
-            if ($self->storage_photo_exists($key)) {
+            my $key = $self->storage->tidy_key($part);
+            if ($self->storage->photo_exists($key)) {
                 $key;
             } else {
                 # A bad hash, probably a bot spamming with bad data.
@@ -190,114 +182,10 @@ has ids => ( #  Arrayref of $fileid tuples (always, so post upload/raw data proc
     },
 );
 
-
-=head2 get_fileid
-
-Calculates an identifier for a binary blob of photo data.
-This is just the SHA1 hash of the blob currently.
-
-=cut
-
-sub get_fileid {
-    my ($self, $photo_blob) = @_;
-    return sha1_hex($photo_blob);
-}
-
-
-=head2 get_file
-
-Returns a Path::Tiny path to a file on disk identified by an ID and type.
-File may or may not exist. This handle is then used to read photo data or
-write to disk.
-
-=cut
-
-sub get_file {
-    my ($self, $fileid, $type) = @_;
-    my $cache_dir = $self->upload_dir;
-    return path( $cache_dir, "$fileid.$type" );
-}
-
-
-=head2 storage_store_photo
-
-Stores a blob of binary data representing a photo in the storage backend.
-If the image type is known, it can be passed in to save another detection pass.
-Returns a key which is used in the future to get the contents of the file.
-
-=cut
-
-sub storage_store_photo {
-    my ($self, $photo_blob) = @_;
-
-    my $type = detect_type($photo_blob) || 'jpeg';
-    my $fileid = $self->get_fileid($photo_blob);
-    my $file = $self->get_file($fileid, $type);
-    $file->spew_raw($photo_blob);
-
-    return $file->basename;
-}
-
-
-=head2 storage_retrieve_photo
-
-Fetches the file content of a particular photo from storage.
-Returns the binary blob and the filetype, if the photo exists in storage.
-
-=cut
-
-sub storage_retrieve_photo {
-    my ($self, $filename) = @_;
-
-    my ($fileid, $type) = split /\./, $filename;
-    my $file = $self->get_file($fileid, $type);
-    if ($file->exists) {
-        my $photo = $file->slurp_raw;
-        return ($photo, $type);
-    }
-}
-
-
-=head2 storage_photo_exists
-
-Checks whether a particular photo exists in storage.
-
-=cut
-
-sub storage_photo_exists {
-    my ($self, $filename) = @_;
-
-    my ($fileid, $type) = split /\./, $filename;
-    return $self->get_file($fileid, $type)->exists;
-}
-
-
-=head2 storage_tidy_key
-
-A long-running FMS instance might have reports whose photo IDs in the DB
-don't include the file extension. This function takes a value from the DB and
-returns a 'tidied' version that can be used when calling storage_photo_exists
-or storage_retrieve_photo.
-
-=cut
-
-sub storage_tidy_key {
-    my ($self, $key) = @_;
-
-    my ($fileid, $type) = split /\./, $key;
-    $type ||= 'jpeg';
-    if ($fileid && length($fileid) == 40) {
-        return "$fileid.$type";
-    } else {
-        return $key;
-    }
-}
-
-
 sub get_raw_image {
     my ($self, $index) = @_;
     my $filename = $self->get_id($index);
-    my ($photo, $type) = $self->storage_retrieve_photo($filename);
+    my ($photo, $type) = $self->storage->retrieve_photo($filename);
     if ($photo) {
         return {
             data => $photo,
