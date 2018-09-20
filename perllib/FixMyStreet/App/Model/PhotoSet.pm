@@ -178,8 +178,9 @@ has ids => ( #  Arrayref of $fileid tuples (always, so post upload/raw data proc
                 # newly-stored file, instead of leaving it in the DB?
             }
 
-            if ($self->storage_photo_exists($part)) {
-                $part;
+            my $key = $self->storage_tidy_key($part);
+            if ($self->storage_photo_exists($key)) {
+                $key;
             } else {
                 # A bad hash, probably a bot spamming with bad data.
                 ();
@@ -267,10 +268,28 @@ sub storage_photo_exists {
     my ($self, $filename) = @_;
 
     my ($fileid, $type) = split /\./, $filename;
+    return $self->get_file($fileid, $type)->exists;
+}
+
+
+=head2 storage_tidy_key
+
+A long-running FMS instance might have reports whose photo IDs in the DB
+don't include the file extension. This function takes a value from the DB and
+returns a 'tidied' version that can be used when calling storage_photo_exists
+or storage_retrieve_photo.
+
+=cut
+
+sub storage_tidy_key {
+    my ($self, $key) = @_;
+
+    my ($fileid, $type) = split /\./, $key;
     $type ||= 'jpeg';
     if ($fileid && length($fileid) == 40) {
-        my $file = $self->get_file($fileid, $type);
-        return $file->exists;
+        return "$fileid.$type";
+    } else {
+        return $key;
     }
 }
 
