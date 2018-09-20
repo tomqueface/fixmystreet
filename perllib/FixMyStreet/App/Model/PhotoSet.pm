@@ -167,13 +167,13 @@ has ids => ( #  Arrayref of $fileid tuples (always, so post upload/raw data proc
                 }
 
                 # we have an image we can use - save it to storage
-                return $self->storage_store_photo($photo_blob, $type);
+                return $self->storage_store_photo($photo_blob);
             }
 
             # It might be a raw file stored in the DB column...
             if (my $type = detect_type($part)) {
                 my $photo_blob = $part;
-                return $self->storage_store_photo($photo_blob, $type);
+                return $self->storage_store_photo($photo_blob);
                 # TODO: Should this update the DB record with a pointer to the
                 # newly-stored file, instead of leaving it in the DB?
             }
@@ -227,9 +227,9 @@ Returns a key which is used in the future to get the contents of the file.
 =cut
 
 sub storage_store_photo {
-    my ($self, $photo_blob, $type) = @_;
+    my ($self, $photo_blob) = @_;
 
-    $type = detect_type($photo_blob) unless $type;
+    my $type = detect_type($photo_blob) || 'jpeg';
     my $fileid = $self->get_fileid($photo_blob);
     my $file = $self->get_file($fileid, $type);
     $file->spew_raw($photo_blob);
