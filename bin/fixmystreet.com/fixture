@@ -111,7 +111,7 @@ foreach (FixMyStreet::Cobrand->available_cobrand_classes) {
     }
 }
 
-my $cache_dir = path(FixMyStreet->config('UPLOAD_DIR'));
+my $cache_dir = path(FixMyStreet->config('PHOTO_STORAGE_OPTIONS')->{UPLOAD_DIR});
 $cache_dir->mkpath;
 
 my $user = $users{'user@example.org'};

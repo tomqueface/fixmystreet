@@ -65,7 +65,8 @@ has storage => (
     is => 'ro',
     lazy => 1,
     default => sub {
-        my $class = 'FixMyStreet::PhotoStorage::FileSystem'; # TODO: read from general.yml
+        my $class = 'FixMyStreet::PhotoStorage::';
+        $class .= FixMyStreet->config('PHOTO_STORAGE_BACKEND') || 'FileSystem';
         eval "use $class";
         return $class->new();
     }
