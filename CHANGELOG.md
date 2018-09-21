@@ -17,6 +17,7 @@
         - Cobrand hook for per-questionnaire sending. #2231
         - Add option for configuring memcache server.
         - Add Blackhole send method. #2246
+        - Move away from FastCGI in sample conf/sysvinit config.
 
 * v2.4 (6th September 2018)
     - Security
