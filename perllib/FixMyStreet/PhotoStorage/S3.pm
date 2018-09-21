@@ -10,8 +10,8 @@ has client => (
     is => 'ro',
     lazy => 1,
     default => sub {
-        my $key = FixMyStreet->config('PHOTOS_S3_ACCESS_KEY');
-        my $secret = FixMyStreet->config('PHOTOS_S3_SECRET_KEY');
+        my $key = FixMyStreet->config('PHOTO_STORAGE_OPTIONS')->{ACCESS_KEY};
+        my $secret = FixMyStreet->config('PHOTO_STORAGE_OPTIONS')->{SECRET_KEY};
 
         my $s3 = Net::Amazon::S3->new(
             aws_access_key_id     => $key,
@@ -26,7 +26,7 @@ has bucket => (
     is => 'ro',
     lazy => 1,
     default => sub {
-        shift->client->bucket( name => FixMyStreet->config('PHOTOS_S3_BUCKET') );
+        shift->client->bucket( name => FixMyStreet->config('PHOTO_STORAGE_OPTIONS')->{BUCKET} );
     },
 );
 
