@@ -16,11 +16,13 @@ my $config_file = 'conf/general.yml-example';
 my $run_server;
 my $run_cypress;
 my $vagrant;
+my $cobrand;
 GetOptions(
     'config=s' => \$config_file,
     'server' => \$run_server,
     'cypress' => \$run_cypress,
     'vagrant' => \$vagrant,
+    'cobrand=s' => \$cobrand
 );
 
 if ($vagrant) {
@@ -52,6 +54,8 @@ if (!$run_server && !$run_cypress) {
     $run_server = $run_cypress = 1;
 }
 
+$cobrand ||= 'fixmystreet';
+
 sub run {
     my $cmd = shift @ARGV;
     die "Must specify a cypress command\n" unless $cmd || !$run_cypress;
@@ -62,7 +66,7 @@ sub run {
         my $config_out = FixMyStreet::TestAppProve->get_config({
             config_file => $config_file,
             # Want this to be like .com
-            ALLOWED_COBRANDS => [ 'fixmystreet' ],
+            ALLOWED_COBRANDS => [ $cobrand ],
             MAPIT_URL => 'https://mapit.uk/',
         });
         $ENV{FMS_OVERRIDE_CONFIG} = $config_out;
