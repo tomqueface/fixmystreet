@@ -205,7 +205,24 @@ sub categories_restriction {
     ] } );
 }
 
-sub dashboard_export_add_columns {
+sub dashboard_export_updates_add_columns {
+    my $self = shift;
+    my $c = $self->{c};
+
+    return unless $c->user->has_body_permission_to('export_extra_columns');
+
+    push @{$c->stash->{csv}->{headers}}, "User Email";
+    push @{$c->stash->{csv}->{columns}}, "user_email";
+
+    $c->stash->{csv}->{extra_data} = sub {
+        my $report = shift;
+        return {
+            user_email => $report->user->email || '',
+        };
+    };
+}
+
+sub dashboard_export_problems_add_columns {
     my $self = shift;
     my $c = $self->{c};
 
