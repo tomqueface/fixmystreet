@@ -85,6 +85,8 @@ PHOTO_STORAGE_OPTIONS:
 #  BUCKET: 'fixmystreet-photos'
 #  ACCESS_KEY: ''
 #  SECRET_KEY: ''
+#  PREFIX: '' # optional prefix for key names in bucket, e.g. if you
+              # have multiple FMS sites storing photos in the same bucket.
 
 # Location of MapIt, to map points to administrative areas, and what types of
 # area from it you want to use. If left blank, a default area will be used

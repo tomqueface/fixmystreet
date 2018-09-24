@@ -30,6 +30,18 @@ has bucket => (
     },
 );
 
+has prefix => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my $self = shift;
+        my $prefix = FixMyStreet->config('PHOTO_STORAGE_OPTIONS')->{PREFIX};
+        return "" unless $prefix;
+        $prefix =~ s#/$##;
+        return "$prefix/";
+    },
+);
+
 sub get_object {
     my ($self, $key) = @_;
     return $self->bucket->object( key => $key );
@@ -40,7 +52,7 @@ sub store_photo {
 
     my $type = $self->detect_type($photo_blob) || 'jpeg';
     my $fileid = $self->get_fileid($photo_blob);
-    my $key = "$fileid.$type";
+    my $key = $self->prefix . "$fileid.$type";
 
     my $object = $self->get_object($key);
     $object->put($photo_blob);
