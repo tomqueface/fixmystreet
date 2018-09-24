@@ -150,7 +150,7 @@ sub construct_rs_filter : Private {
     }
 
     $c->stash->{params} = \%where;
-    $c->stash->{problems_rs} = $c->cobrand->problems->to_body($c->stash->{body})->search( \%where );
+    $c->stash->{objects_rs} = $c->cobrand->problems->to_body($c->stash->{body})->search( \%where );
 }
 
 sub generate_grouped_data : Private {
@@ -182,7 +182,7 @@ sub generate_grouped_data : Private {
         @groups = qw/category state/;
         %grouped = map { $_->category => {} } @{$c->stash->{contacts}};
     }
-    my $problems = $c->stash->{problems_rs}->search(undef, {
+    my $problems = $c->stash->{objects_rs}->search(undef, {
         group_by => [ map { ref $_ ? $_->{-as} : $_ } @groups ],
         select   => [ @groups, { count => 'me.id' } ],
         as       => [ @groups == 2 ? qw/key1 key2 count/ : qw/key1 count/ ],
@@ -238,7 +238,7 @@ sub generate_summary_figures {
     # problems this month by state
     $c->stash->{"summary_$_"} = 0 for values %$state_map;
 
-    $c->stash->{summary_open} = $c->stash->{problems_rs}->count;
+    $c->stash->{summary_open} = $c->stash->{objects_rs}->count;
 
     my $params = $c->stash->{params};
     $params = { map { my $n = $_; s/me\./problem\./ unless /me\.confirmed/; $_ => $params->{$n} } keys %$params };
@@ -292,7 +292,7 @@ sub export_as_csv : Private {
     my ($self, $c) = @_;
 
     my $csv = $c->stash->{csv} = {
-        problems => $c->stash->{problems_rs}->search_rs({}, {
+        objects => $c->stash->{objects_rs}->search_rs({}, {
             prefetch => 'comments',
             order_by => ['me.confirmed', 'me.id'],
         }),
@@ -361,6 +361,9 @@ hashref of extra data to include that can be used by 'columns'.
 sub generate_csv : Private {
     my ($self, $c) = @_;
 
+    # Old parameter renaming
+    $c->stash->{csv}->{objects} //= $c->stash->{csv}->{problems};
+
     my $csv = Text::CSV->new({ binary => 1, eol => "\n" });
     $csv->combine(@{$c->stash->{csv}->{headers}});
     my @body = ($csv->string);
@@ -370,15 +373,15 @@ sub generate_csv : Private {
 
     my %asked_for = map { $_ => 1 } @{$c->stash->{csv}->{columns}};
 
-    my $problems = $c->stash->{csv}->{problems};
-    while ( my $report = $problems->next ) {
-        my $hashref = $report->as_hashref($c, \%asked_for);
+    my $objects = $c->stash->{csv}->{objects};
+    while ( my $obj = $objects->next ) {
+        my $hashref = $obj->as_hashref($c, \%asked_for);
 
-        $hashref->{user_name_display} = $report->anonymous
-            ? '(anonymous)' : $report->name;
+        $hashref->{user_name_display} = $obj->anonymous
+            ? '(anonymous)' : $obj->name;
 
         if ($asked_for{acknowledged}) {
-            for my $comment ($report->comments) {
+            for my $comment ($obj->comments) {
                 my $problem_state = $comment->problem_state or next;
                 next unless $comment->state eq 'confirmed';
                 next if $problem_state eq 'confirmed';
@@ -400,14 +403,14 @@ sub generate_csv : Private {
         }
 
         ($hashref->{local_coords_x}, $hashref->{local_coords_y}) =
-            $report->local_coords;
-        $hashref->{url} = join '', $c->cobrand->base_url_for_report($report), $report->url;
+            $obj->local_coords;
+        $hashref->{url} = join '', $c->cobrand->base_url_for_report($obj), $obj->url;
 
-        $hashref->{site_used} = $report->service || $report->cobrand;
-        $hashref->{reported_as} = $report->get_extra_metadata('contributed_as') || '';
+        $hashref->{site_used} = $obj->service || $obj->cobrand;
+        $hashref->{reported_as} = $obj->get_extra_metadata('contributed_as') || '';
 
         if (my $fn = $c->stash->{csv}->{extra_data}) {
-            my $extra = $fn->($report);
+            my $extra = $fn->($obj);
             $hashref = { %$hashref, %$extra };
         }
 
