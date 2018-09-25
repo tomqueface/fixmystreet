@@ -26,6 +26,8 @@ services:
       FMS_DB_NAME: 'fixmystreet'
       FMS_DB_USER: 'fms'
       FMS_ROOT: '/var/www/fixmystreet/fixmystreet'
+      SUPERUSER_EMAIL: 'superuser@example.org'
+      SUPERUSER_PASSWORD: '5up3r53cr3t'
     networks:
       default:
         aliases:

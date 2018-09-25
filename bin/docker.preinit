@@ -27,3 +27,8 @@ fi
 
 # Ensure the schema is up-to-date.
 su $FMS_DB_USER -c "${FMS_ROOT}/bin/update-schema --commit"
+
+# If the right environment variables are present, set up a FMS superuser account.
+if [ -n "$SUPERUSER_PASSWORD" ] && [ -n "$SUPERUSER_EMAIL"]; then
+  su $FMS_DB_USER -c "${FMS_ROOT}/bin/createsuperuser $SUPERUSER_EMAIL $SUPERUSER_PASSWORD"
+fi
