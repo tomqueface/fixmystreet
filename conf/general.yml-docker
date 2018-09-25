@@ -29,6 +29,10 @@ SECURE_PROXY_SSL_HEADER: ''
 # trusted HTTP header and the required value. For example:
 #   SECURE_PROXY_SSL_HEADER: [ 'X-Forwarded-Proto', 'https' ]
 
+# This is so the fixmystreet container knows it is running
+# behind an nginx container (not on the same host)
+using_frontend_proxy: 1
+
 # Email domain used for emails, and contact name/email for admin use.
 EMAIL_DOMAIN: '127.0.0.1.xip.io'
 CONTACT_EMAIL: 'help@127.0.0.1.xip.io'
