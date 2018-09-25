@@ -21,7 +21,7 @@ FMS_DB_USER: 'fms'
 FMS_DB_PASS: 'fms'
 
 # The base URL of the install.
-BASE_URL: 'http://localhost:9000'
+BASE_URL: 'http://localhost:8000'
 # Use the below if you're using the Catalyst development server
 #   BASE_URL: 'http://localhost:3000'
 SECURE_PROXY_SSL_HEADER: ''
