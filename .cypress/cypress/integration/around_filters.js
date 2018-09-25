@@ -90,9 +90,42 @@ describe('Around page filtering and push state', function() {
     it('lets me go from around -> report and back', function() {
         cy.server();
         cy.route('/report/*').as('show-report');
+        cy.route('/reports/*').as('show-all');
         cy.visit('/reports/Borsetshire');
+        // there is one pin extra for the background
+        cy.get('image[id*="OpenLayers_Geometry_Point"]').should('have.length', 15);
+        cy.get('image[title="Pothole in cycle lane"]').invoke('attr', 'xlink:href').should('not.contain', 'small');
         cy.get('.item-list--reports__item:first a').click();
         cy.wait('@show-report');
+        cy.contains('Back to all reports');
+        cy.get('image[id*="OpenLayers_Geometry_Point"]').should('have.length', 16);
+        cy.get('image[title="Pothole in cycle lane"]').invoke('attr', 'xlink:href').should('contain', 'small');
+        cy.contains('handlebars');
+        cy.url().should('include', 'report');
+        cy.go('back');
+        cy.wait('@show-all');
+        cy.contains('Lights out in tunnel');
+        cy.should('not.contain', 'Back to all reports');
+        cy.get('image[title="Pothole in cycle lane"]').invoke('attr', 'xlink:href').should('not.contain', 'small');
     });
 
+    it('lets me click on a pin to show a report', function() {
+        cy.server();
+        cy.route('/report/*').as('show-report');
+        cy.route('/reports/*').as('show-all');
+        cy.route('/mapit/area/*').as('get-geometry');
+        cy.visit('/reports/Borsetshire');
+        cy.wait('@get-geometry');
+        cy.get('image[title="Loose drain cover"]').invoke('attr', 'xlink:href').should('not.contain', 'small');
+        cy.get('image[title="Loose drain cover"]').click();
+        cy.wait('@show-report');
+        cy.contains('Back to all reports');
+        cy.get('image[title="Loose drain cover"]').invoke('attr', 'xlink:href').should('contain', 'small');
+        cy.contains('tumble');
+        cy.url().should('include', 'report');
+        cy.go('back');
+        cy.wait('@show-all');
+        cy.contains('Lights out in tunnel');
+        cy.should('not.contain', 'Back to all reports');
+    });
 });
