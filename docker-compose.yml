@@ -31,7 +31,7 @@ services:
         aliases:
           - fixmystreet.svc
   postgres:
-    image: sagepe/postgres:9.6
+    image: fixmystreet/postgres:9.6-en_GB
     restart: always
     volumes:
       - fixmystreet-pgdata:/var/lib/postgresql/data/pgdata
